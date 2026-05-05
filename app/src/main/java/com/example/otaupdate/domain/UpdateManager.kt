@@ -3,12 +3,15 @@ package com.example.otaupdate.domain
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
+import android.database.Cursor
 import android.net.Uri
 import android.os.Environment
 import androidx.core.content.FileProvider
 import com.example.otaupdate.data.UpdateApi
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -19,6 +22,14 @@ class UpdateManager @Inject constructor(
     private val api: UpdateApi,
     @ApplicationContext private val context: Context
 ) {
+
+    private val downloadManager =
+        context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+
+    private var downloadId: Long = -1L
+
+    private val _downloadProgress = MutableStateFlow(0)
+    val downloadProgress = _downloadProgress.asStateFlow()
 
     suspend fun checkForUpdate(): UpdateInfo? {
         return withContext(Dispatchers.IO) {
@@ -52,20 +63,21 @@ class UpdateManager @Inject constructor(
     }
 
     fun downloadAndInstall(apkUrl: String) {
-        val request = DownloadManager.Request(Uri.parse(apkUrl)).apply {
-            setTitle("Actualizando app")
-            setDescription("Descargando actualización...")
-            setNotificationVisibility(
+
+        val request = DownloadManager.Request(Uri.parse(apkUrl))
+            .setTitle("Actualizando app")
+            .setDescription("Descargando APK...")
+            .setNotificationVisibility(
                 DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
             )
-            setDestinationInExternalPublicDir(
+            .setDestinationInExternalPublicDir(
                 Environment.DIRECTORY_DOWNLOADS,
                 "update.apk"
             )
-        }
 
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        dm.enqueue(request)
+        downloadId = downloadManager.enqueue(request)
+
+        monitorProgress()
     }
 
     fun installApk() {
@@ -87,6 +99,45 @@ class UpdateManager @Inject constructor(
         }
 
         context.startActivity(intent)
+    }
+
+    private fun monitorProgress() {
+
+        Thread {
+            var downloading = true
+
+            while (downloading) {
+
+                val query = DownloadManager.Query().setFilterById(downloadId)
+                val cursor: Cursor = downloadManager.query(query)
+
+                if (cursor.moveToFirst()) {
+
+                    val bytesDownloaded =
+                        cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+
+                    val bytesTotal =
+                        cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+
+                    if (bytesTotal > 0) {
+                        val progress = (bytesDownloaded * 100L / bytesTotal).toInt()
+                        _downloadProgress.value = progress
+                    }
+
+                    val status =
+                        cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+
+                    if (status == DownloadManager.STATUS_SUCCESSFUL ||
+                        status == DownloadManager.STATUS_FAILED
+                    ) {
+                        downloading = false
+                    }
+                }
+
+                cursor.close()
+                Thread.sleep(300)
+            }
+        }.start()
     }
 }
 

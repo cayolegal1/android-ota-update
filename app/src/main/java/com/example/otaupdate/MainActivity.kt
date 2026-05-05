@@ -40,6 +40,8 @@ fun UpdateScreen(updateManager: UpdateManager) {
 
     val scope = rememberCoroutineScope()
 
+    val progress by updateManager.downloadProgress.collectAsState()
+
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     var loading by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("Idle") }
@@ -55,8 +57,7 @@ fun UpdateScreen(updateManager: UpdateManager) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // Text("OTA UPDATE TEST", style = MaterialTheme.typography.headlineMedium)
-            Text("DALE PERRA", style = MaterialTheme.typography.headlineMedium)
+            Text("OTA UPDATE TEST", style = MaterialTheme.typography.headlineMedium)
 
             Text("Status: $status")
 
@@ -64,24 +65,27 @@ fun UpdateScreen(updateManager: UpdateManager) {
                 CircularProgressIndicator()
             }
 
-            Button(
-                onClick = {
-                    scope.launch {
-                        loading = true
-                        status = "Checking update..."
+            if (progress > 0 && progress < 100) {
+                LinearProgressIndicator(progress = { progress / 100f })
+                Text("Descargando: $progress%")
+            }
 
-                        updateInfo = updateManager.checkForUpdate()
+            Button(onClick = {
+                scope.launch {
+                    loading = true
+                    status = "Checking update..."
 
-                        status = if (updateInfo != null) {
-                            "Update available: v${updateInfo!!.versionCode}"
-                        } else {
-                            "App is up to date"
-                        }
+                    updateInfo = updateManager.checkForUpdate()
 
-                        loading = false
+                    status = if (updateInfo != null) {
+                        "Update available: v${updateInfo!!.versionCode}"
+                    } else {
+                        "App is up to date"
                     }
+
+                    loading = false
                 }
-            ) {
+            }) {
                 Text("Check for update")
             }
 
@@ -95,7 +99,6 @@ fun UpdateScreen(updateManager: UpdateManager) {
 
                         updateManager.downloadAndInstall(info.apkUrl)
 
-                        status = "Download started (check notifications)"
                         loading = false
                     }
                 },
