@@ -45,6 +45,7 @@ fun UpdateScreen(updateManager: UpdateManager) {
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     var loading by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("Idle") }
+    var downloading by remember { mutableStateOf(false) }
 
     Scaffold { padding ->
 
@@ -66,7 +67,7 @@ fun UpdateScreen(updateManager: UpdateManager) {
                 CircularProgressIndicator()
             }
 
-            if (progress > 0 && progress < 100) {
+            if (downloading || (progress in 1..<100)) {
                 LinearProgressIndicator(progress = { progress / 100f })
                 Text("Descargando: $progress%")
             }
@@ -95,12 +96,16 @@ fun UpdateScreen(updateManager: UpdateManager) {
                     val info = updateInfo ?: return@Button
 
                     scope.launch {
-                        loading = true
+                        downloading = true
                         status = "Downloading APK..."
 
-                        updateManager.downloadAndInstall(info.apkUrl, { status = "APK Downloaded" })
-
-                        loading = false
+                        updateManager.downloadAndInstall(
+                            info.apkUrl,
+                            {
+                                status = "APK Downloaded"
+                                downloading = false
+                            }
+                        )
                     }
                 },
                 enabled = updateInfo != null
