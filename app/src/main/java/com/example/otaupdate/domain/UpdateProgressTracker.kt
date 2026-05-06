@@ -67,7 +67,6 @@ class DownloadProgressTracker @Inject constructor(
                 }
 
                 cursor.close()
-                Thread.sleep(300)
             }
         }.start()
     }
