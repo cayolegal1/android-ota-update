@@ -40,7 +40,7 @@ fun UpdateScreen(updateManager: UpdateManager) {
 
     val scope = rememberCoroutineScope()
 
-    val progress by updateManager.downloadProgress.collectAsState()
+    val progress by updateManager.getProgress().collectAsState()
 
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     var loading by remember { mutableStateOf(false) }
@@ -57,7 +57,8 @@ fun UpdateScreen(updateManager: UpdateManager) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            Text("OTA UPDATE TEST", style = MaterialTheme.typography.headlineMedium)
+            // Text("OTA UPDATE TEST", style = MaterialTheme.typography.headlineMedium)
+            Text("DALE PERRA", style = MaterialTheme.typography.headlineMedium)
 
             Text("Status: $status")
 
@@ -97,7 +98,7 @@ fun UpdateScreen(updateManager: UpdateManager) {
                         loading = true
                         status = "Downloading APK..."
 
-                        updateManager.downloadAndInstall(info.apkUrl)
+                        updateManager.downloadAndInstall(info.apkUrl, { status = "APK Downloaded" })
 
                         loading = false
                     }

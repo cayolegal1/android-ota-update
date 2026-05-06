@@ -21,9 +21,9 @@ class UpdateViewModel @Inject constructor(
         }
     }
 
-    fun update() {
-        updateInfo?.let {
-            updateManager.downloadAndInstall(it.apkUrl)
-        }
-    }
+//    fun update() {
+//        updateInfo?.let {
+//            updateManager.downloadAndInstall(it.apkUrl)
+//        }
+//    }
 }
